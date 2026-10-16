@@ -432,6 +432,49 @@ fn scalarmult_fixed_base(
     output_mont_y: &mut [u32; 8],
     scalar: &[u32; 8],
 ) {
+    scalarmult_fixed_base_with(
+        output_mont_x,
+        output_mont_y,
+        scalar,
+        &P256_BASEPOINT_PRECOMP2,
+    );
+}
+
+/// Precomputed table for [`scalarmult_fixed_base_table`].
+///
+/// `table[0][m] = (2^192 + c_0 + c_1 2^64 + c_2 2^128) P` with `c_k = +1` if bit
+/// `k` of `m` is set and `-1` otherwise, and `table[1][m] = 2^32 table[0][m]`.
+/// Points are affine, in Montgomery form, as little-endian words.
+pub type FixedBaseTable = [[[[u32; 8]; 2]; 8]; 2];
+
+/// Scalar multiplication of the point behind `table` (31 doublings, 63
+/// additions). Checks that the scalar is in `[1, n-1]`.
+///
+/// The table is indexed with scalar bits; keep it in memory without a cache
+/// (RAM, not XIP flash) to stay constant time.
+#[must_use]
+pub fn scalarmult_fixed_base_table(
+    result_x: &mut [u32; 8],
+    result_y: &mut [u32; 8],
+    scalar: &[u32; 8],
+    table: &FixedBaseTable,
+) -> bool {
+    if unsafe { !P256_check_range_n(scalar) } {
+        false
+    } else {
+        scalarmult_fixed_base_with(result_x, result_y, scalar, table);
+        unsafe { P256_from_montgomery(result_x, &raw const *result_x as _) };
+        unsafe { P256_from_montgomery(result_y, &raw const *result_y as _) };
+        true
+    }
+}
+
+fn scalarmult_fixed_base_with(
+    output_mont_x: &mut [u32; 8],
+    output_mont_y: &mut [u32; 8],
+    scalar: &[u32; 8],
+    table: &FixedBaseTable,
+) {
     let mut scalar2: [u32; 8] = [0; 8];
 
     // Just as with the algorithm used in variable base scalar multiplication, this algorithm requires the scalar to be odd.
@@ -456,14 +499,14 @@ fn scalarmult_fixed_base(
                 | (get_bit!(scalar2, i + 64 + 32 + 1) << 1)
                 | (get_bit!(scalar2, i + 2 * 64 + 32 + 1) << 2);
             if i == 31 {
-                current_point[..2].copy_from_slice(&P256_BASEPOINT_PRECOMP2[1][mask as usize]);
+                current_point[..2].copy_from_slice(&table[1][mask as usize]);
                 current_point[2].copy_from_slice(&ONE_MONTGOMERY);
             } else {
                 unsafe { P256_double_j(&raw mut current_point as _, &raw mut current_point as _) };
 
                 let sign: u32 = get_bit!(scalar2, i + 3 * 64 + 32 + 1).wrapping_sub(1); // positive: 0, negative: -1
                 mask = (mask ^ sign) & 7;
-                selected_point.copy_from_slice(&P256_BASEPOINT_PRECOMP2[1][mask as usize]);
+                selected_point.copy_from_slice(&table[1][mask as usize]);
                 unsafe {
                     P256_negate_mod_p_if(&mut selected_point[1], &selected_point[1], sign & 1)
                 };
@@ -483,7 +526,7 @@ fn scalarmult_fixed_base(
                 | (get_bit!(scalar2, i + 2 * 64 + 1) << 2);
             let sign: u32 = get_bit!(scalar2, i + 3 * 64 + 1).wrapping_sub(1); // positive: 0, negative: -1
             mask = (mask ^ sign) & 7;
-            selected_point.copy_from_slice(&P256_BASEPOINT_PRECOMP2[0][mask as usize]);
+            selected_point.copy_from_slice(&table[0][mask as usize]);
             unsafe { P256_negate_mod_p_if(&mut selected_point[1], &selected_point[1], sign & 1) };
             unsafe {
                 P256_add_sub_j(
