@@ -993,3 +993,75 @@ fn mod_n_inv(res: &mut [u32; 8], a: &[u32; 8]) {
         )
     };
 }
+
+/// Raw field, point and scalar operations. Points are Jacobian `[x, y, z]`
+/// with coordinates in Montgomery form, scalars are plain little-endian words.
+pub mod raw {
+    use crate::asm::{
+        jacobian::{P256_add_sub_j, P256_jacobian_to_affine},
+        P256_double_j, P256_from_montgomery, P256_mul_mod_n, P256_to_montgomery,
+    };
+
+    /// A point `[x, y, z]`; `z = 0` is the point at infinity.
+    pub type Jacobian = [[u32; 8]; 3];
+
+    /// 1 in Montgomery form.
+    pub const ONE: [u32; 8] = super::ONE_MONTGOMERY;
+
+    /// The generator `G` (entry 0 of `P256_BASEPOINT_PRECOMP`).
+    pub const GENERATOR: Jacobian = [
+        [0x18a9143c, 0x79e730d4, 0x5fedb601, 0x75ba95fc, 0x77622510, 0x79fb732b, 0xa53755c6, 0x18905f76],
+        [0xce95560a, 0xddf25357, 0xba19e45c, 0x8b4ab8e4, 0xdd21f325, 0xd2e88688, 0x25885d85, 0x8571ff18],
+        super::ONE_MONTGOMERY,
+    ];
+
+    pub fn to_montgomery(a: &[u32; 8]) -> [u32; 8] {
+        let mut r = [0u32; 8];
+        unsafe { P256_to_montgomery(&raw mut r as _, a) };
+        r
+    }
+
+    pub fn from_montgomery(a: &[u32; 8]) -> [u32; 8] {
+        let mut r = [0u32; 8];
+        unsafe { P256_from_montgomery(&mut r, &raw const *a as _) };
+        r
+    }
+
+    /// `p = 2 p`.
+    pub fn double(p: &mut Jacobian) {
+        unsafe { P256_double_j(&raw mut *p as _, &raw const *p as _) };
+    }
+
+    /// `a = a + b` (or `a - b`) for a finite `b`.
+    pub fn add(a: &mut Jacobian, b: &Jacobian, sub: bool) {
+        unsafe { P256_add_sub_j(&raw mut *a as _, &raw const *b as _, sub, false) };
+    }
+
+    /// `a = a + b` (or `a - b`) for a finite affine `b = [x, y]`.
+    pub fn add_affine(a: &mut Jacobian, b: &[[u32; 8]; 2], sub: bool) {
+        unsafe { P256_add_sub_j(&raw mut *a as _, &raw const *b as _, sub, true) };
+    }
+
+    /// Affine `[x, y]` of a finite `p`, in Montgomery form.
+    pub fn to_affine(p: &Jacobian) -> [[u32; 8]; 2] {
+        let mut r = [[0u32; 8]; 2];
+        unsafe {
+            P256_jacobian_to_affine(&raw mut r[0] as _, &raw mut r[1] as _, &raw const *p as _)
+        };
+        r
+    }
+
+    /// `a^-1 mod n` (zero for zero).
+    pub fn invert_mod_n(a: &[u32; 8]) -> [u32; 8] {
+        let mut r = [0u32; 8];
+        super::mod_n_inv(&mut r, a);
+        r
+    }
+
+    /// `a b mod n`.
+    pub fn mul_mod_n(a: &[u32; 8], b: &[u32; 8]) -> [u32; 8] {
+        let mut r = [0u32; 8];
+        unsafe { P256_mul_mod_n(&mut r, a, b) };
+        r
+    }
+}
