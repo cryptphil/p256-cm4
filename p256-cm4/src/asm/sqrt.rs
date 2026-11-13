@@ -1,5 +1,7 @@
 use core::arch::naked_asm;
 
+use super::Montgomery;
+
 /// For input `a = A * R mod p` and mode `mode`:
 /// 1. If `mode == modinv`, calculate `A^-1 * R mod p = (a/R)^-1 * R mod p = R^2 / a mod p`
 /// 2. If `mode == sqrt`, calculate `sqrt(A) * R mod p`
@@ -119,5 +121,27 @@ pub unsafe extern "C" fn P256_modinv_sqrt() {
         P256_mulmod = sym super::P256_mulmod,
         P256_sqrmod_many = sym super::P256_sqrmod_many,
         P256_sqrmod = sym super::P256_sqrmod,
+    )
+}
+
+/// `out = A^-1 * R mod p` for `a = A * R mod p` (zero for zero), with the C
+/// calling convention.
+#[unsafe(no_mangle)]
+#[unsafe(naked)]
+pub unsafe extern "C" fn P256_modinv_c(out: *mut Montgomery, a: *const Montgomery) {
+    naked_asm!(
+        "
+            push {{r0, r4-r11, lr}}
+            // frame push {{r0, r4-r11, lr}}
+
+            ldm r1, {{r0-r7}}
+            mov r8, #0
+            bl {P256_modinv_sqrt}
+            pop {{r8}}
+            stm r8, {{r0-r7}}
+
+            pop {{r4-r11, pc}}
+        ",
+        P256_modinv_sqrt = sym P256_modinv_sqrt,
     )
 }

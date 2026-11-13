@@ -225,6 +225,23 @@ fn scalarmult_variable_base(
     output_mont_y: &mut [u32; 8],
     scalar: &[u32; 8],
 ) {
+    let current_point = scalarmult_variable_base_jacobian(output_mont_x, output_mont_y, scalar);
+    unsafe {
+        P256_jacobian_to_affine(
+            &raw mut *output_mont_x as _,
+            &raw mut *output_mont_y as _,
+            &raw const current_point as _,
+        )
+    };
+}
+
+/// `scalar * P` in Jacobian coordinates for the affine point `P = (in_x, in_y)`,
+/// all in Montgomery form.
+fn scalarmult_variable_base_jacobian(
+    in_x: &[u32; 8],
+    in_y: &[u32; 8],
+    scalar: &[u32; 8],
+) -> [[u32; 8]; 3] {
     // Based on https://eprint.iacr.org/2014/130.pdf, Algorithm 1.
 
     // The algorithm used requires the scalar to be odd. If even, negate the scalar modulo p to make it odd, and later negate the end result.
@@ -245,8 +262,8 @@ fn scalarmult_variable_base(
 
     // Create a table of P, 3P, 5P, ... 15P.
     let mut table: [[[u32; 8]; 3]; 8] = [[[0; 8]; 3]; 8];
-    table[0][0].copy_from_slice(output_mont_x);
-    table[0][1].copy_from_slice(output_mont_y);
+    table[0][0].copy_from_slice(in_x);
+    table[0][1].copy_from_slice(in_y);
     table[0][2].copy_from_slice(&ONE_MONTGOMERY);
     unsafe { P256_double_j(&raw mut table[7] as _, &raw const table[0] as _) };
     (1..8).for_each(|i| {
@@ -298,17 +315,11 @@ fn scalarmult_variable_base(
             )
         };
     });
-    unsafe {
-        P256_jacobian_to_affine(
-            &raw mut *output_mont_x as _,
-            &raw mut *output_mont_y as _,
-            &raw const current_point as _,
-        )
-    };
 
     // If the scalar was initially even, we now negate the result to get the correct result, since -(scalar*G) = (-scalar*G).
-    // This is done by negating y, since -(x,y) = (x,-y).
-    unsafe { P256_negate_mod_p_if(output_mont_y, output_mont_y, even) };
+    // This is done by negating y, since -(x,y,z) = (x,-y,z).
+    unsafe { P256_negate_mod_p_if(&mut current_point[1], &current_point[1], even) };
+    current_point
 }
 
 #[must_use]
@@ -319,23 +330,30 @@ fn scalarmult_generic_no_scalar_check(
     in_x: &[u32; 8],
     in_y: &[u32; 8],
 ) -> bool {
-    if unsafe { !P256_check_range_p(in_x) || !P256_check_range_p(in_y) } {
-        false
-    } else {
-        unsafe { P256_to_montgomery(&raw mut *output_mont_x as _, in_x) };
-        unsafe { P256_to_montgomery(&raw mut *output_mont_y as _, in_y) };
-
-        if unsafe {
-            !P256_point_is_on_curve(
-                &raw const *output_mont_x as _,
-                &raw const *output_mont_y as _,
-            )
-        } {
-            false
-        } else {
+    match montgomery_point_on_curve(in_x, in_y) {
+        Some((x, y)) => {
+            *output_mont_x = x;
+            *output_mont_y = y;
             scalarmult_variable_base(output_mont_x, output_mont_y, scalar);
             true
         }
+        None => false,
+    }
+}
+
+/// `(in_x, in_y)` in Montgomery form, if both are below `p` and the point is
+/// on the curve.
+fn montgomery_point_on_curve(in_x: &[u32; 8], in_y: &[u32; 8]) -> Option<([u32; 8], [u32; 8])> {
+    if unsafe { !P256_check_range_p(in_x) || !P256_check_range_p(in_y) } {
+        return None;
+    }
+    let (mut x, mut y) = ([0u32; 8], [0u32; 8]);
+    unsafe { P256_to_montgomery(&raw mut x as _, in_x) };
+    unsafe { P256_to_montgomery(&raw mut y as _, in_y) };
+    if unsafe { P256_point_is_on_curve(&raw const x as _, &raw const y as _) } {
+        Some((x, y))
+    } else {
+        None
     }
 }
 
@@ -475,6 +493,19 @@ fn scalarmult_fixed_base_with(
     scalar: &[u32; 8],
     table: &FixedBaseTable,
 ) {
+    let current_point = scalarmult_fixed_base_jacobian(scalar, table);
+    unsafe {
+        P256_jacobian_to_affine(
+            &raw mut *output_mont_x as _,
+            &raw mut *output_mont_y as _,
+            &raw const current_point as _,
+        )
+    };
+}
+
+/// `scalar * P` in Jacobian coordinates (Montgomery form) for the point
+/// behind `table`.
+fn scalarmult_fixed_base_jacobian(scalar: &[u32; 8], table: &FixedBaseTable) -> [[u32; 8]; 3] {
     let mut scalar2: [u32; 8] = [0; 8];
 
     // Just as with the algorithm used in variable base scalar multiplication, this algorithm requires the scalar to be odd.
@@ -539,16 +570,9 @@ fn scalarmult_fixed_base_with(
         }
     }
 
-    unsafe {
-        P256_jacobian_to_affine(
-            &raw mut *output_mont_x as _,
-            &raw mut *output_mont_y as _,
-            &raw const current_point as _,
-        )
-    };
-
     // Negate final result if the scalar was initially even.
-    unsafe { P256_negate_mod_p_if(output_mont_y, output_mont_y, even) };
+    unsafe { P256_negate_mod_p_if(&mut current_point[1], &current_point[1], even) };
+    current_point
 }
 
 /// Raw scalar multiplication by the base point of the elliptic curve.
@@ -998,9 +1022,11 @@ fn mod_n_inv(res: &mut [u32; 8], a: &[u32; 8]) {
 /// with coordinates in Montgomery form, scalars are plain little-endian words.
 pub mod raw {
     use crate::asm::{
+        P256_check_range_n, P256_double_j, P256_from_montgomery, P256_modinv_c, P256_mul_mod_n,
+        P256_mulmod_c, P256_to_montgomery,
         jacobian::{P256_add_sub_j, P256_jacobian_to_affine},
-        P256_double_j, P256_from_montgomery, P256_mul_mod_n, P256_to_montgomery,
     };
+    use crate::{FixedBaseTable, P256_BASEPOINT_PRECOMP2};
 
     /// A point `[x, y, z]`; `z = 0` is the point at infinity.
     pub type Jacobian = [[u32; 8]; 3];
@@ -1063,5 +1089,45 @@ pub mod raw {
         let mut r = [0u32; 8];
         unsafe { P256_mul_mod_n(&mut r, a, b) };
         r
+    }
+
+    /// `a b mod p` for `a`, `b` in Montgomery form.
+    pub fn mul_mod_p(a: &[u32; 8], b: &[u32; 8]) -> [u32; 8] {
+        let mut r = [0u32; 8];
+        unsafe { P256_mulmod_c(&raw mut r as _, &raw const *a as _, &raw const *b as _) };
+        r
+    }
+
+    /// `a^-1 mod p` for `a` in Montgomery form (zero for zero).
+    pub fn invert_mod_p(a: &[u32; 8]) -> [u32; 8] {
+        let mut r = [0u32; 8];
+        unsafe { P256_modinv_c(&raw mut r as _, &raw const *a as _) };
+        r
+    }
+
+    /// `k P` without the final conversion to affine form, for plain affine
+    /// coordinates `x`, `y`. `None` unless `k` is in `[1, n-1]` and `P` is on
+    /// the curve.
+    pub fn scalarmult_generic(k: &[u32; 8], x: &[u32; 8], y: &[u32; 8]) -> Option<Jacobian> {
+        if unsafe { !P256_check_range_n(k) } {
+            return None;
+        }
+        let (x, y) = super::montgomery_point_on_curve(x, y)?;
+        Some(super::scalarmult_variable_base_jacobian(&x, &y, k))
+    }
+
+    /// `k G` without the final conversion to affine form. `None` unless `k` is
+    /// in `[1, n-1]`.
+    pub fn scalarmult_base(k: &[u32; 8]) -> Option<Jacobian> {
+        scalarmult_fixed_base_table(k, &P256_BASEPOINT_PRECOMP2)
+    }
+
+    /// `k P` for the point behind `table`, without the final conversion to
+    /// affine form. `None` unless `k` is in `[1, n-1]`.
+    pub fn scalarmult_fixed_base_table(k: &[u32; 8], table: &FixedBaseTable) -> Option<Jacobian> {
+        if unsafe { !P256_check_range_n(k) } {
+            return None;
+        }
+        Some(super::scalarmult_fixed_base_jacobian(k, table))
     }
 }

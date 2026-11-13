@@ -15,13 +15,13 @@ pub(crate) mod montgomery;
 pub use montgomery::{Montgomery, P256_from_montgomery, P256_to_montgomery};
 
 mod sqrt;
-pub(crate) use sqrt::P256_modinv_sqrt;
+pub(crate) use sqrt::{P256_modinv_c, P256_modinv_sqrt};
 
 mod matrix;
 pub use matrix::{P256_divsteps2_31, P256_matrix_mul_fg_9, P256_matrix_mul_mod_n};
 
 mod mulmod;
-pub(crate) use mulmod::{P256_mul_mod_n, P256_mulmod};
+pub(crate) use mulmod::{P256_mul_mod_n, P256_mulmod, P256_mulmod_c};
 
 mod verify;
 pub use verify::P256_verify_last_step;

@@ -1,5 +1,7 @@
 use core::arch::naked_asm;
 
+use super::Montgomery;
+
 /// For inputs `A*R mod p` and `B*R mod p`, compute `A*B*R mod p`.
 ///
 /// # Inputs
@@ -566,5 +568,30 @@ pub unsafe extern "C" fn P256_mul_mod_n(
         ",
         mul288x288 = sym super::mul288x288,
         P256_reduce_mod_n_64bytes = sym super::P256_reduce_mod_n_64bytes,
+    )
+}
+
+/// `out = a*b*R^-1 mod p` for `a = A*R mod p` and `b = B*R mod p`, with the
+/// C calling convention, i.e. `A*B*R mod p` in Montgomery form.
+#[unsafe(no_mangle)]
+#[unsafe(naked)]
+pub unsafe extern "C" fn P256_mulmod_c(
+    out: *mut Montgomery,
+    a: *const Montgomery,
+    b: *const Montgomery,
+) {
+    naked_asm!(
+        "
+            push {{r0, r4-r11, lr}}
+            // frame push {{r0, r4-r11, lr}}
+
+            // P256_mulmod takes its operands in r1 and r2.
+            bl {P256_mulmod}
+            pop {{r8}}
+            stm r8, {{r0-r7}}
+
+            pop {{r4-r11, pc}}
+        ",
+        P256_mulmod = sym P256_mulmod,
     )
 }
