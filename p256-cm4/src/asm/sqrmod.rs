@@ -11,6 +11,7 @@ use core::arch::naked_asm;
 /// All other registers are clobbered.
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 pub unsafe extern "C" fn P256_sqrmod() {
     cfg_if::cfg_if! {
         if #[cfg(feature = "use-mul-for-sqr")] {

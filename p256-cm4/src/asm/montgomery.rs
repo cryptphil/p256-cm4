@@ -38,6 +38,7 @@ impl Default for Montgomery {
 ///
 /// > **Note**: `r0` will be overriden during the execution of this function (it is callee-saved).
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn P256_to_montgomery(a: *mut Montgomery, aR: *const [u32; 8]) {
     naked_asm!(
@@ -81,6 +82,7 @@ pub unsafe extern "C" fn P256_to_montgomery(a: *mut Montgomery, aR: *const [u32;
 ///
 /// > **Note**: `r0` will be overriden during the execution of this function (it is callee-saved).
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn P256_from_montgomery(a: *mut [u32; 8], aR: *const Montgomery) {
     naked_asm!(

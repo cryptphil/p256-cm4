@@ -18,6 +18,7 @@ use core::arch::naked_asm;
 // TODO: make this `extern "custom"` once that is stabilized (https://github.com/rust-lang/rust/issues/140829)
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 pub unsafe extern "C" fn P256_submod() {
     naked_asm!(
         "
@@ -67,6 +68,7 @@ pub unsafe extern "C" fn P256_submod() {
 // TODO: make this `extern "custom"` once that is stabilized (https://github.com/rust-lang/rust/issues/140829)
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 pub unsafe extern "C" fn P256_addmod() {
     naked_asm!(
         "
@@ -123,6 +125,7 @@ pub unsafe extern "C" fn P256_addmod() {
 /// > **Note**: `r0` will be overriden during the execution of this function (it is callee-saved).
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 pub unsafe extern "C" fn P256_add_mod_n(
     res: *mut [u32; 8],
     a: *const [u32; 8],

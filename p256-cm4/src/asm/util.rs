@@ -12,6 +12,7 @@ use core::arch::naked_asm;
 /// # Return
 /// On return, the location pointed to by `r0` will contain the result of the computation.
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn mul288x288() {
     naked_asm!(
@@ -84,6 +85,7 @@ pub unsafe extern "C" fn mul288x288() {
 ///
 /// > **Note**: this function clobbers all registers.
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn add_sub_helper() {
     naked_asm!(
@@ -182,6 +184,7 @@ pub unsafe extern "C" fn P256_check_range_n(a: *const [u32; 8]) -> bool {
 /// # Returns
 /// On return, `r0` will contain the result of the computation as a boolean.
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn P256_check_range_p(a: *const [u32; 8]) -> bool {
     naked_asm!(
@@ -223,6 +226,7 @@ pub unsafe extern "C" fn P256_check_range_p(a: *const [u32; 8]) -> bool {
 ///
 /// This function clobbers r0, r1, r2 and r3.
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn setzero() {
     naked_asm!(

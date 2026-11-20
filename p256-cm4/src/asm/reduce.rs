@@ -68,6 +68,7 @@ pub unsafe extern "C" fn P256_reduce_mod_n_once() {
 /// # Return
 /// On return, the dereference of the input value of `r0` shall contain the result of the computation.
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn P256_reduce_mod_n_32bytes(res: *mut [u32; 8], a: *const [u32; 8]) {
     naked_asm!(

@@ -16,6 +16,7 @@ use crate::asm::Montgomery;
 ///
 /// > **Note**: `r0` will be overriden during the execution of this function (it is callee-saved).
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn P256_double_j(
     jacobian_out: *mut [Montgomery; 3],
@@ -174,6 +175,7 @@ pub unsafe extern "C" fn P256_double_j(
 /// # Outputs
 /// `r0` through `r7` will contain the result of the computation.
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn P256_times2() {
     naked_asm!(
@@ -235,6 +237,7 @@ pub unsafe extern "C" fn P256_times2() {
 ///
 /// > **Note**: `r0` will be overriden during the execution of this function (it is callee-saved).
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn P256_add_sub_j(
     a: *mut [Montgomery; 3],
@@ -533,6 +536,7 @@ pub unsafe extern "C" fn P256_add_sub_j(
 ///
 /// > **Note**: `r0` will be overriden during the execution of this function (it is callee-saved).
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn P256_jacobian_to_affine(
     x: *mut Montgomery,

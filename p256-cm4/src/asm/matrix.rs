@@ -29,6 +29,7 @@ struct MatrixElement(u32);
 #[unsafe(no_mangle)]
 // TODO: can we get rid of this `naked`? In theory, this function adheres to the ARM calling convention.
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 pub unsafe extern "C" fn P256_matrix_mul_mod_n(
     a: u32,
     b: u32,
@@ -221,6 +222,7 @@ pub unsafe extern "C" fn P256_matrix_mul_mod_n(
 /// of the computation.
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 pub unsafe extern "C" fn P256_divsteps2_31(delta: i32, f: u32, g: u32, res: *mut [u32; 4]) -> i32 {
     naked_asm!(
         "
@@ -303,6 +305,7 @@ pub unsafe extern "C" fn P256_divsteps2_31(delta: i32, f: u32, g: u32, res: *mut
 /// # Return
 /// On return, the dereference of the input value of `r3` will contain the result of the operation.
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn P256_matrix_mul_fg_9(
     a: u32,

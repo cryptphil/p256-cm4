@@ -15,6 +15,7 @@ use super::Montgomery;
 /// All other registers are clobbered.
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 pub unsafe extern "C" fn P256_mulmod() {
     cfg_if::cfg_if! {
         if #[cfg(feature = "fpu")] {
@@ -524,6 +525,7 @@ pub unsafe extern "C" fn P256_mulmod() {
 ///
 /// > **Note**: `r0` will be overriden during the execution of this function (it is callee-saved).
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn P256_mul_mod_n(
     res: *mut [u32; 8],
@@ -575,6 +577,7 @@ pub unsafe extern "C" fn P256_mul_mod_n(
 /// C calling convention, i.e. `A*B*R mod p` in Montgomery form.
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 pub unsafe extern "C" fn P256_mulmod_c(
     out: *mut Montgomery,
     a: *const Montgomery,

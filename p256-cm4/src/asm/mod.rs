@@ -180,6 +180,7 @@ pub unsafe extern "C" fn P256_point_is_on_curve(
 /// normal rust code, so it must only be called from other inline assembly.
 // TODO: make this `extern "custom"` once that is stabilized (https://github.com/rust-lang/rust/issues/140829)
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn P256_sqrmod_many() {
     naked_asm!(
@@ -220,6 +221,7 @@ pub unsafe extern "C" fn P256_sqrmod_many() {
 /// normal rust code, so it must only be called from other inline assembly.
 // TODO: make this `extern "custom"` once that is stabilized (https://github.com/rust-lang/rust/issues/140829)
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn P256_sqrmod_many_and_mulmod() {
     naked_asm!(
@@ -354,6 +356,7 @@ pub unsafe extern "C" fn P256_decompress_point(
 /// > **Note**: `r0` will be overriden during the execution of this function (it is callee-saved).
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 pub unsafe extern "C" fn P256_negate_mod_m_if() {
     naked_asm!(
         "

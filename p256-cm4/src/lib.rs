@@ -237,6 +237,7 @@ fn scalarmult_variable_base(
 
 /// `scalar * P` in Jacobian coordinates for the affine point `P = (in_x, in_y)`,
 /// all in Montgomery form.
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 fn scalarmult_variable_base_jacobian(
     in_x: &[u32; 8],
     in_y: &[u32; 8],
@@ -505,6 +506,7 @@ fn scalarmult_fixed_base_with(
 
 /// `scalar * P` in Jacobian coordinates (Montgomery form) for the point
 /// behind `table`.
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 fn scalarmult_fixed_base_jacobian(scalar: &[u32; 8], table: &FixedBaseTable) -> [[u32; 8]; 3] {
     let mut scalar2: [u32; 8] = [0; 8];
 

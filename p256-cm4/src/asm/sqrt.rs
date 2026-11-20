@@ -15,6 +15,7 @@ use super::Montgomery;
 /// `r0` through `r7` shall contain the result of the computation.
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 pub unsafe extern "C" fn P256_modinv_sqrt() {
     naked_asm!(
         "
@@ -128,6 +129,7 @@ pub unsafe extern "C" fn P256_modinv_sqrt() {
 /// calling convention.
 #[unsafe(no_mangle)]
 #[unsafe(naked)]
+#[unsafe(link_section = ".p256-cortex-m4.text")]
 pub unsafe extern "C" fn P256_modinv_c(out: *mut Montgomery, a: *const Montgomery) {
     naked_asm!(
         "
